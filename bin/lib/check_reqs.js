@@ -23,6 +23,7 @@
 
 var shelljs = require('shelljs'),
     child_process = require('child_process'),
+    semver = require('semver'),
     Q     = require('q'),
     path  = require('path'),
     fs    = require('fs'),
@@ -260,6 +261,27 @@ module.exports.check_android_target = function(valid_target) {
     });
 };
 
+function checkBuildTools() {
+    var gradleScript = shelljs.cat(path.join(ROOT, 'CordovaLib/cordova.gradle'));
+    var minVersion = gradleScript && gradleScript.match(/MIN_BUILD_TOOLS_VERSION\s*=\s*'(.*?)'/)[1];
+    if (!minVersion) return Q.reject(new Error('Failed to get mimimum required build tools version'));
+
+    var maxVersion = shelljs.ls(path.join(process.env.ANDROID_HOME, 'build-tools'))
+        .map(semver.valid)
+        .filter(function (version) { return version; })
+        .sort(semver.rcompare)[0];
+
+    if (maxVersion && semver.gte(maxVersion, minVersion))
+        return Q(maxVersion);
+
+    if (!maxVersion) return Q.reject(new Error('No Android build tools found. ' +
+        'Please install at least ' + minVersion + ' to be able to build project'));
+
+    return Q.reject(new Error('No appropriate version of Android build tools found. ' +
+        'Latest build tools installed is ' + maxVersion + ' but Cordova requires at least ' +
+        minVersion));
+}
+
 // Returns a promise.
 module.exports.run = function() {
     return Q.all([this.check_java(), this.check_android().then(this.check_android_target)])
@@ -298,6 +320,7 @@ module.exports.check_all = function() {
         new Requirement('java', 'Java JDK'),
         new Requirement('androidSdk', 'Android SDK'),
         new Requirement('androidTarget', 'Android target'),
+        new Requirement('androidBuildTools', 'Android build-tools'),
         new Requirement('gradle', 'Gradle')
     ];
 
@@ -305,6 +328,7 @@ module.exports.check_all = function() {
         this.check_java,
         this.check_android,
         this.check_android_target,
+        checkBuildTools,
         this.check_gradle
     ];
 

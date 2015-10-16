@@ -20,6 +20,8 @@
 import java.util.regex.Pattern
 import groovy.swing.SwingBuilder
 
+def MIN_BUILD_TOOLS_VERSION = '19.1.0'
+
 String doEnsureValueExists(filePath, props, key) {
     if (props.get(key) == null) {
         throw new GradleException(filePath + ': Missing key required "' + key + '"')
@@ -177,7 +179,7 @@ ext {
     // These helpers are shared, but are not guaranteed to be stable / unchanged.
     privateHelpers = {}
     privateHelpers.getProjectTarget = { doGetProjectTarget() }
-    privateHelpers.findLatestInstalledBuildTools = { doFindLatestInstalledBuildTools('19.1.0') }
+    privateHelpers.findLatestInstalledBuildTools = { doFindLatestInstalledBuildTools(MIN_BUILD_TOOLS_VERSION) }
     privateHelpers.extractIntFromManifest = { name -> doExtractIntFromManifest(name) }
     privateHelpers.promptForPassword = { msg -> doPromptForPassword(msg) }
     privateHelpers.ensureValueExists = { filePath, props, key -> doEnsureValueExists(filePath, props, key) }
