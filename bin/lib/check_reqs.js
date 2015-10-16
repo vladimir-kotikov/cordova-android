@@ -30,6 +30,7 @@ var shelljs = require('shelljs'),
     which = require('which'),
     ROOT  = path.join(__dirname, '..', '..');
 
+var MIN_PLATFORM_TOOLS_VERSION = '19.0.0';
 var isWindows = process.platform == 'win32';
 
 function forgivingWhichSync(cmd) {
@@ -282,6 +283,24 @@ function checkBuildTools() {
         minVersion));
 }
 
+function checkPlatformTools() {
+    var platformToolsProperties = shelljs
+        .cat(path.join(process.env.ANDROID_HOME, 'platform-tools/source.properties'));
+    var currentVersion = platformToolsProperties && platformToolsProperties.match(/Pkg\.Revision=(.*)/)[1];
+
+    if (!currentVersion) return Q.reject(new Error('No Android platform tools found.' +
+        ' Please install at least ' + MIN_PLATFORM_TOOLS_VERSION +
+        ' to be able to be able to deploy your application'));
+
+    // Need to use semver.satisfies and construct range manually since semver
+    // rejects to parse versions that consists of only one number
+    return semver.satisfies(MIN_PLATFORM_TOOLS_VERSION, '<' + currentVersion) ?
+        Q(currentVersion) :
+        Q.reject(new Error('No appropriate version of Android platofrm tools found. ' +
+            'Latest build tools installed is ' + currentVersion + ' but Cordova requires at least ' +
+            MIN_PLATFORM_TOOLS_VERSION));
+}
+
 // Returns a promise.
 module.exports.run = function() {
     return Q.all([this.check_java(), this.check_android().then(this.check_android_target)])
@@ -321,6 +340,7 @@ module.exports.check_all = function() {
         new Requirement('androidSdk', 'Android SDK'),
         new Requirement('androidTarget', 'Android target'),
         new Requirement('androidBuildTools', 'Android build-tools'),
+        new Requirement('androidPlatformTools', 'Android platform-tools'),
         new Requirement('gradle', 'Gradle')
     ];
 
@@ -329,6 +349,7 @@ module.exports.check_all = function() {
         this.check_android,
         this.check_android_target,
         checkBuildTools,
+        checkPlatformTools,
         this.check_gradle
     ];
 
